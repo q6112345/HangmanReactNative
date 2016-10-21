@@ -52,7 +52,7 @@ class ResultBox extends React.Component {
           <Text style={styles.title}>Scores: {this.props.result.score}</Text>
         </View>
         <View>
-          <Text style={{fontSize:15}}>
+          <Text style={{fontSize:12, marginVertical:13}}>
             WordsTried: {this.props.result.totalWordCount}, Correct:{this.props.result.correctWordCount}, WrongGuess:{this.props.result.totalWrongGuessCount}
           </Text>
         </View>
