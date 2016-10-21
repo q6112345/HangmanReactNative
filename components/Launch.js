@@ -37,33 +37,36 @@ class Launch extends React.Component {
       super(props);
       this.state = {
         isLoading: true,
-        isResumable: false
+        sessionId: null
       }
       this.startNewGame = this.startNewGame.bind(this);
       this.resumeGame = this.resumeGame.bind(this);
-      this._loadSessionId = this._loadSessionId.bind(this);
+      this.loadSessionId = this.loadSessionId.bind(this);
     }
 
   componentWillMount() {
-    this._loadSessionId()
+    this.loadSessionId()
   }
 
-  async _loadSessionId() {
+  async loadSessionId() {
+    this.setState({isLoading: true})
     let sessionId = await AsyncStorage.getItem('sessionId');
+    console.log('loadSessionId',sessionId)
     if (sessionId) {
-      this.setState({isResumable: true})
+      this.setState({isLoading: false, sessionId: sessionId})
+    } else {
+      this.setState({isLoading: false, sessionId: null})
     }
-    this.setState({isLoading: false})
   }
 
 
   startNewGame() {
-    Actions.game({reloadSessionId:this._loadSessionId})
+    Actions.game({reloadSessionId:this.loadSessionId})
   }
 
   async resumeGame() {
-    let sessionId = await AsyncStorage.getItem('sessionId');
-    Actions.game({reloadSessionId:this._loadSessionId, sessionId:sessionId})
+    //let sessionId = await AsyncStorage.getItem('sessionId');
+    Actions.game({reloadSessionId:this.loadSessionId, sessionId:this.state.sessionId})
   }
 
   renderLoading() {
@@ -75,7 +78,7 @@ class Launch extends React.Component {
   renderButtons() {
     return (
       <View>
-        {this.state.isResumable && <Button containerStyle={[styles.roundButtonContainer, styles.successBackground]}
+        {this.state.sessionId && <Button containerStyle={[styles.roundButtonContainer, styles.successBackground]}
                                            style={styles.whiteColor}
                                            onPress={this.resumeGame}>Resume</Button>}
         <Button containerStyle={[styles.roundButtonContainer, styles.infoBackground]}

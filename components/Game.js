@@ -62,7 +62,7 @@ export default class Game extends Component {
 
   }
   async backToLaunch() {
-    this.props.reloadSessionId()
+    await this.props.reloadSessionId()
     Actions.pop()
   }
   async getNextWord(){
@@ -81,7 +81,7 @@ export default class Game extends Component {
     this.showResult()
   }
   async submit(){
-    this.HgApi.submitYourResult();
+    await this.HgApi.submitYourResult();
     await AsyncStorage.removeItem('sessionId');
     this.backToLaunch()
 
