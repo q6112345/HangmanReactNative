@@ -3,7 +3,7 @@ import {View, Text, StyleSheet, AsyncStorage, TouchableOpacity, Dimensions} from
 import Button from "react-native-button";
 import {Actions} from "react-native-router-flux";
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import GameObject from './GameObject'
+import API from './API'
 
 const allLetters = [];
 for (var i = 65; i < 91; i++) {
@@ -33,6 +33,7 @@ export default class Game extends Component {
         attemptedLetters: [],
 
       };
+      this.prepareGame = this.prepareGame.bind(this);
       this.getNextWord = this.getNextWord.bind(this);
       this.submit = this.submit.bind(this);
       this.getYourResult = this.getYourResult.bind(this);
@@ -41,54 +42,49 @@ export default class Game extends Component {
     }
 
   componentWillMount() {
-    this.HgApi = new GameObject(this.props.sessionId);
-    if (!this.props.sessionId) {
-      this.HgApi.startGame((responseData) => {
-        console.log('start game done')
-        console.log(responseData)
-        AsyncStorage.setItem('sessionId', responseData.sessionId)
-        this.setState(responseData.data)
-        this.getNextWord()
-      })
+    this.prepareGame()
 
+  }
+  async prepareGame() {
+
+    this.HgApi = new API(this.props.sessionId);
+    if (!this.props.sessionId) {
+      let responseData = await this.HgApi.startGame();
+      AsyncStorage.setItem('sessionId', responseData.sessionId);
+      this.setState(responseData.data);
+      this.getNextWord();
     } else {
-      this.HgApi.getYourResult((responseData) => {
-        this.setState(responseData.data)
-        this.getNextWord()
-      })
+      let responseData = await this.HgApi.getYourResult();
+      this.setState(responseData.data);
+      this.getNextWord();
 
     }
 
   }
-  getNextWord(){
-    this.HgApi.giveMeAWord((responseData) => {
-      if (responseData.message ==  "Game already over") {
-        AsyncStorage.removeItem('sessionId')
-        Actions.pop()
-        return
-      }
-      console.log('give me a word')
-      console.log(responseData)
-      this.setState(responseData.data)
-      // clear attempted letters
-      this.setState({attemptedLetters:[]})
-    })
+  async backToLaunch() {
+    this.props.reloadSessionId()
+    Actions.pop()
   }
-  getYourResult(){
-    this.HgApi.getYourResult((responseData) => {
-      console.log('refresh result')
-      console.log(responseData)
-      this.setState(responseData.data)
-      this.showResult()
-    })
+  async getNextWord(){
+    let responseData = await this.HgApi.giveMeAWord();
+    if (responseData.message ==  "Game already over") {
+      AsyncStorage.removeItem('sessionId');
+      this.backToLaunch();
+      return
+    }
+    this.setState(responseData.data);
+    this.setState({attemptedLetters:[]})
   }
-  submit(){
-    this.HgApi.submitYourResult((responseData) => {
-      AsyncStorage.removeItem('sessionId')
-      Actions.pop()
+  async getYourResult(){
+    let responseData = await this.HgApi.getYourResult()
+    this.setState(responseData.data);
+    this.showResult()
+  }
+  async submit(){
+    this.HgApi.submitYourResult();
+    await AsyncStorage.removeItem('sessionId');
+    this.backToLaunch()
 
-
-    })
   }
   showResult() {
     Actions.resultModal({result: this.state, getNextWord: this.getNextWord, submit: this.submit})
@@ -159,7 +155,7 @@ export default class Game extends Component {
       <View style={{flex:1,flexDirection:'column', marginTop:30, justifyContent:'center'}}>
 
         <View style={{flex:1, flexDirection:'row', justifyContent:'space-between', marginHorizontal: 10}}>
-          <TouchableOpacity onPress={Actions.pop}>
+          <TouchableOpacity onPress={()=>this.backToLaunch()}>
             <View style={{flexDirection:'row'}}>
               <FontAwesome name="arrow-left" size={20}/>
             </View>

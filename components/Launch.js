@@ -3,7 +3,7 @@ import {View, Text, StyleSheet, AsyncStorage} from "react-native";
 import Button from "react-native-button";
 import {Actions} from "react-native-router-flux";
 import GiftedSpinner from 'react-native-gifted-spinner';
-import GameObject from './GameObject'
+import GameObject from './API'
 
 const styles = StyleSheet.create({
   container: {
@@ -40,6 +40,8 @@ class Launch extends React.Component {
         isResumable: false
       }
       this.startNewGame = this.startNewGame.bind(this);
+      this.resumeGame = this.resumeGame.bind(this);
+      this._loadSessionId = this._loadSessionId.bind(this);
     }
 
   componentWillMount() {
@@ -56,12 +58,12 @@ class Launch extends React.Component {
 
 
   startNewGame() {
-    Actions.game()
+    Actions.game({reloadSessionId:this._loadSessionId})
   }
 
   async resumeGame() {
     let sessionId = await AsyncStorage.getItem('sessionId');
-    Actions.game({sessionId:sessionId})
+    Actions.game({reloadSessionId:this._loadSessionId, sessionId:sessionId})
   }
 
   renderLoading() {
@@ -76,7 +78,7 @@ class Launch extends React.Component {
         {this.state.isResumable && <Button containerStyle={[styles.roundButtonContainer, styles.successBackground]}
                                            style={styles.whiteColor}
                                            onPress={this.resumeGame}>Resume</Button>}
-        <Button containerStyle={[styles.roundButtonContainer, styles.warningBackground]}
+        <Button containerStyle={[styles.roundButtonContainer, styles.infoBackground]}
                 style={styles.whiteColor }
                 onPress={this.startNewGame}>Start
           New Game</Button>
