@@ -3,6 +3,8 @@ import {View, Text, StyleSheet, AsyncStorage, TouchableOpacity, Dimensions} from
 import Button from "react-native-button";
 import {Actions} from "react-native-router-flux";
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import GiftedSpinner from 'react-native-gifted-spinner';
+import Toast from 'react-native-root-toast';
 import API from './API'
 
 const allLetters = [];
@@ -31,6 +33,7 @@ export default class Game extends Component {
         totalWrongGuessCount: 0,
         score: 0,
         attemptedLetters: [],
+        isLoading: true
 
       };
       this.prepareGame = this.prepareGame.bind(this);
@@ -43,6 +46,13 @@ export default class Game extends Component {
 
   componentWillMount() {
     this.prepareGame()
+
+  }
+  showToast(msg){
+    Toast.show(msg, {
+      duration: Toast.durations.SHORT,
+      position: Toast.positions.CENTER,
+    });
 
   }
   async prepareGame() {
@@ -66,6 +76,7 @@ export default class Game extends Component {
     Actions.pop()
   }
   async getNextWord(){
+    this.setState({isLoading:true})
     let responseData = await this.HgApi.giveMeAWord();
     if (responseData.message ==  "Game already over") {
       AsyncStorage.removeItem('sessionId');
@@ -74,6 +85,7 @@ export default class Game extends Component {
     }
     this.setState(responseData.data);
     this.setState({attemptedLetters:[]})
+    this.setState({isLoading:false})
   }
   async getYourResult(){
     let responseData = await this.HgApi.getYourResult()
@@ -93,6 +105,12 @@ export default class Game extends Component {
   async onKeyPress(letter) {
     // https://github.com/Arthraim/HangmanReact
     console.log('onPress', letter)
+    if (this.state.isLoading) {
+      this.showToast('Please wait the result before do next guess')
+      return
+    }
+    this.setState({isLoading:true})
+
     if (this.state.attemptedLetters.indexOf(letter) > -1) {
       return;
     }
@@ -101,6 +119,7 @@ export default class Game extends Component {
     array.push(letter)
     this.setState({attemptedLetters: array})
     this.setState(responseData.data)
+    this.setState({isLoading:false})
     if (this.state.wrongGuessCountOfCurrentWord > 0
       && this.state.numberOfGuessAllowedForEachWord > 0
       && (this.state.wrongGuessCountOfCurrentWord == this.state.numberOfGuessAllowedForEachWord /*wrong*/
@@ -149,10 +168,18 @@ export default class Game extends Component {
               <FontAwesome name="arrow-left" size={20}/>
             </View>
           </TouchableOpacity>
-          <View style={{flexDirection:'row'}}>
-            <FontAwesome name="heart" size={20}/>
-            <Text style={{fontSize:15}}> x{this.state.numberOfGuessAllowedForEachWord - this.state.wrongGuessCountOfCurrentWord}</Text>
-          </View>
+          {
+            this.state.isLoading
+              ?
+              <View>
+                <GiftedSpinner/>
+              </View>
+              :
+            <View style={{flexDirection:'row'}}>
+              <FontAwesome name="heart" size={20}/>
+              <Text style={{fontSize:15}}> x{this.state.numberOfGuessAllowedForEachWord - this.state.wrongGuessCountOfCurrentWord}</Text>
+            </View>
+          }
           <TouchableOpacity
             onPress={this.showResult}>
             <View style={{flexDirection:'row'}}>
