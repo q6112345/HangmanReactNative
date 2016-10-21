@@ -75,50 +75,51 @@ export default class Game extends Component {
     let qeury = this.state.word.replace(/\*/g,'?');
     try {
       let result = await this.HgApi.get(`https://api.datamuse.com/words?sp=${qeury}`);
+      let resultArray = result.map((item)=>item.word)
+      //let resultArray = ["cancel", "faucet", "parcel", "cancer", "lancet", "faeces", "saucer", "lancer", "dancer", "fasces", "jaycee", "marcel", "fauces", "dances", "falcer", "sauced", "carcel", "farced", "calces", "danced", "calced", "lanced", "lances", "sauces", "fascet", "talced", "farces", "mancer", "dancey", "sarcel", "carcer", "hances", "kaycee", "falces", "darcel", "nances", "darcey", "garces", "nancey", "eamcet", "rances", "tancer", "balcer", "nancee", "yancey"];
+      let missedLetters = this.state.attemptedLetters.filter((letter)=>this.state.word.indexOf(letter) === -1)
+      let hittingLetters = this.state.attemptedLetters.filter((letter)=>missedLetters.indexOf(letter) === -1)
+      //console.log('resultArray',resultArray)
+      //console.log('missedLetters',missedLetters)
+      //console.log('hittingLetters',hittingLetters)
+      let sugguestedWords = resultArray.filter((word)=> {
+        let notExistMissedLetter = true;
+        for (let letter of missedLetters) {
+          if (word.indexOf(letter.toLowerCase()) !== -1) {
+            notExistMissedLetter = false;
+            break;
+          }
+        }
+        return notExistMissedLetter
+      });
+      let allSugguestedWordsString = sugguestedWords.join('')
+      let letterFrequence = this.getFrequency(allSugguestedWordsString)
+      var letterOccuccencyDescArray = [];
+      for (let letter in letterFrequence) {
+        if (hittingLetters.indexOf(letter.toUpperCase()) !== -1) {
+          continue;
+        }
+        letterOccuccencyDescArray.push({
+          letter: letter.toUpperCase(),
+          count: letterFrequence[letter],
+          //words: []
+        })
+        letterOccuccencyDescArray.sort(
+          function (a, b) {
+            return b.count - a.count
+          }
+        )
+
+      }
+
+      console.log('sugguestedWords', sugguestedWords)
+      console.log('letterOccuccencyDescArray', letterOccuccencyDescArray);
+      let sugguestLetters = letterOccuccencyDescArray.splice(0, 5);
+      Alert.alert('Hint', JSON.stringify(sugguestLetters));
     } catch (e) {
       console.log('Network Error', e)
       alert('Network Error')
     }
-    let resultArray = result.map((item)=>item.word)
-    //let resultArray = ["cancel", "faucet", "parcel", "cancer", "lancet", "faeces", "saucer", "lancer", "dancer", "fasces", "jaycee", "marcel", "fauces", "dances", "falcer", "sauced", "carcel", "farced", "calces", "danced", "calced", "lanced", "lances", "sauces", "fascet", "talced", "farces", "mancer", "dancey", "sarcel", "carcer", "hances", "kaycee", "falces", "darcel", "nances", "darcey", "garces", "nancey", "eamcet", "rances", "tancer", "balcer", "nancee", "yancey"];
-    let missedLetters = this.state.attemptedLetters.filter((letter)=>this.state.word.indexOf(letter)===-1)
-    let hittingLetters = this.state.attemptedLetters.filter((letter)=>missedLetters.indexOf(letter)===-1)
-    //console.log('resultArray',resultArray)
-    //console.log('missedLetters',missedLetters)
-    //console.log('hittingLetters',hittingLetters)
-    let sugguestedWords = resultArray.filter((word)=> {
-      let notExistMissedLetter = true;
-      for (let letter of missedLetters) {
-        if (word.indexOf(letter.toLowerCase())!==-1) {
-          notExistMissedLetter = false;
-          break;
-        }
-      }
-      return notExistMissedLetter
-    });
-    let allSugguestedWordsString = sugguestedWords.join('')
-    let letterFrequence = this.getFrequency(allSugguestedWordsString)
-    var letterOccuccencyDescArray = [];
-    for (let letter in letterFrequence) {
-      if (hittingLetters.indexOf(letter.toUpperCase()) !== -1) {
-        continue;
-      }
-      letterOccuccencyDescArray.push({
-        letter: letter,
-        count: letterFrequence[letter],
-        //words: []
-      })
-      letterOccuccencyDescArray.sort(
-        function (a, b) {
-          return b.count - a.count
-        }
-      )
-    }
-
-    console.log('sugguestedWords',sugguestedWords)
-    console.log('letterOccuccencyDescArray',letterOccuccencyDescArray);
-    let sugguestLetters = letterOccuccencyDescArray.splice(0,5);
-    Alert.alert('Suggest Letters',JSON.stringify(sugguestLetters));
 
   }
 
@@ -146,28 +147,28 @@ export default class Game extends Component {
     this.setState({isLoading:true})
     try {
       let responseData = await this.HgApi.giveMeAWord();
+      if (responseData.message ===  "Game already over") {
+        AsyncStorage.removeItem('sessionId');
+        this.backToLaunch();
+        return
+      }
+      this.setState(responseData.data);
+      this.setState({attemptedLetters:[]})
+      this.setState({isLoading:false})
     } catch (e) {
       console.log('Network Error', e)
       alert('Network Error')
     }
-    if (responseData.message ==  "Game already over") {
-      AsyncStorage.removeItem('sessionId');
-      this.backToLaunch();
-      return
-    }
-    this.setState(responseData.data);
-    this.setState({attemptedLetters:[]})
-    this.setState({isLoading:false})
   }
   async getYourResult(){
     try {
       let responseData = await this.HgApi.getYourResult()
+      this.setState(responseData.data);
     } catch (e) {
       console.log('Network Error', e)
       alert('Network Error')
     }
 
-    this.setState(responseData.data);
   }
   async submit(){
     try {
@@ -200,21 +201,23 @@ export default class Game extends Component {
     }
     try {
       let responseData = await this.HgApi.makeAGuess(letter)
+      let array = this.state.attemptedLetters
+      array.push(letter)
+      this.setState({attemptedLetters: array})
+      this.setState(responseData.data)
+      this.setState({isLoading: false})
+      if (this.state.wrongGuessCountOfCurrentWord > 0
+        && this.state.numberOfGuessAllowedForEachWord > 0
+        && (this.state.wrongGuessCountOfCurrentWord == this.state.numberOfGuessAllowedForEachWord /*wrong*/
+        || !this.state.word.includes('*') /*right*/)) {
+        this.showResult()
+      }
     } catch (e) {
+      this.setState({isLoading:false})
       console.log('Network Error', e)
       alert('Network Error')
     }
-    let array = this.state.attemptedLetters
-    array.push(letter)
-    this.setState({attemptedLetters: array})
-    this.setState(responseData.data)
-    this.setState({isLoading:false})
-    if (this.state.wrongGuessCountOfCurrentWord > 0
-      && this.state.numberOfGuessAllowedForEachWord > 0
-      && (this.state.wrongGuessCountOfCurrentWord == this.state.numberOfGuessAllowedForEachWord /*wrong*/
-      || !this.state.word.includes('*') /*right*/)) {
-      this.showResult()
-    }
+
 
 
   }
@@ -278,12 +281,13 @@ export default class Game extends Component {
           </TouchableOpacity>
 
         </View>
-          <View style={{flex:2,justifyContent: 'center',alignItems: 'center',}}>
-            <TouchableOpacity
-              onPress={this.getGoldenKey.bind(this)}>
-              <Text style={styles.word}>{this.state.word}</Text>
-            </TouchableOpacity>
-          </View>
+        <View style={{flex:2,justifyContent: 'center',alignItems: 'center',}}>
+          <Text style={styles.word}>{this.state.word}</Text>
+          <TouchableOpacity
+            onPress={this.getGoldenKey.bind(this)}>
+            <FontAwesome name="key"/>
+          </TouchableOpacity>
+        </View>
         <View style={{flex:3}}>
           {this.renderKeyBoard()}
         </View>
