@@ -34,6 +34,17 @@ class API {
     return await this.fetchData(requestBody)
   }
 
+  getPamer(url, options) {
+    return url + '?' + Object.keys(aoptions).map(key => key + '=' + encodeURIComponent(options[key])).join('&');
+  }
+
+  async get(url) {
+    let response = await fetch(url);
+    let responseJson = await response.json();
+    //console.log('get responseJson',responseJson)
+    return responseJson;
+  }
+
   async getYourResult() {
     let requestBody = {
       sessionId: this.sessionId,

@@ -1,5 +1,5 @@
 import React, {Component} from 'react';
-import {View, Text, StyleSheet, AsyncStorage, TouchableOpacity, Dimensions} from "react-native";
+import {View, Text, StyleSheet, AsyncStorage, TouchableOpacity, Dimensions, Alert} from "react-native";
 import Button from "react-native-button";
 import {Actions} from "react-native-router-flux";
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
@@ -55,6 +55,73 @@ export default class Game extends Component {
     });
 
   }
+
+
+  getFrequency(string) {
+    var freq = {};
+    for (var i=0; i<string.length;i++) {
+      var character = string.charAt(i);
+      if (freq[character]) {
+        freq[character]++;
+      } else {
+        freq[character] = 1;
+      }
+    }
+
+    return freq;
+  };
+
+  async getGoldenKey() {
+    let qeury = this.state.word.replace(/\*/g,'?');
+    try {
+      let result = await this.HgApi.get(`https://api.datamuse.com/words?sp=${qeury}`);
+    } catch (e) {
+      console.log('Network Error', e)
+      alert('Network Error')
+    }
+    let resultArray = result.map((item)=>item.word)
+    //let resultArray = ["cancel", "faucet", "parcel", "cancer", "lancet", "faeces", "saucer", "lancer", "dancer", "fasces", "jaycee", "marcel", "fauces", "dances", "falcer", "sauced", "carcel", "farced", "calces", "danced", "calced", "lanced", "lances", "sauces", "fascet", "talced", "farces", "mancer", "dancey", "sarcel", "carcer", "hances", "kaycee", "falces", "darcel", "nances", "darcey", "garces", "nancey", "eamcet", "rances", "tancer", "balcer", "nancee", "yancey"];
+    let missedLetters = this.state.attemptedLetters.filter((letter)=>this.state.word.indexOf(letter)===-1)
+    let hittingLetters = this.state.attemptedLetters.filter((letter)=>missedLetters.indexOf(letter)===-1)
+    //console.log('resultArray',resultArray)
+    //console.log('missedLetters',missedLetters)
+    //console.log('hittingLetters',hittingLetters)
+    let sugguestedWords = resultArray.filter((word)=> {
+      let notExistMissedLetter = true;
+      for (let letter of missedLetters) {
+        if (word.indexOf(letter.toLowerCase())!==-1) {
+          notExistMissedLetter = false;
+          break;
+        }
+      }
+      return notExistMissedLetter
+    });
+    let allSugguestedWordsString = sugguestedWords.join('')
+    let letterFrequence = this.getFrequency(allSugguestedWordsString)
+    var letterOccuccencyDescArray = [];
+    for (let letter in letterFrequence) {
+      if (hittingLetters.indexOf(letter.toUpperCase()) !== -1) {
+        continue;
+      }
+      letterOccuccencyDescArray.push({
+        letter: letter,
+        count: letterFrequence[letter],
+        //words: []
+      })
+      letterOccuccencyDescArray.sort(
+        function (a, b) {
+          return b.count - a.count
+        }
+      )
+    }
+
+    console.log('sugguestedWords',sugguestedWords)
+    console.log('letterOccuccencyDescArray',letterOccuccencyDescArray);
+    let sugguestLetters = letterOccuccencyDescArray.splice(0,5);
+    Alert.alert('Suggest Letters',JSON.stringify(sugguestLetters));
+
+  }
+
   async prepareGame() {
 
     this.HgApi = new API(this.props.sessionId);
@@ -77,7 +144,12 @@ export default class Game extends Component {
   }
   async getNextWord(){
     this.setState({isLoading:true})
-    let responseData = await this.HgApi.giveMeAWord();
+    try {
+      let responseData = await this.HgApi.giveMeAWord();
+    } catch (e) {
+      console.log('Network Error', e)
+      alert('Network Error')
+    }
     if (responseData.message ==  "Game already over") {
       AsyncStorage.removeItem('sessionId');
       this.backToLaunch();
@@ -88,11 +160,23 @@ export default class Game extends Component {
     this.setState({isLoading:false})
   }
   async getYourResult(){
-    let responseData = await this.HgApi.getYourResult()
+    try {
+      let responseData = await this.HgApi.getYourResult()
+    } catch (e) {
+      console.log('Network Error', e)
+      alert('Network Error')
+    }
+
     this.setState(responseData.data);
   }
   async submit(){
-    await this.HgApi.submitYourResult();
+    try {
+      await this.HgApi.submitYourResult();
+    } catch (e) {
+      console.log('Network Error', e)
+      alert('Network Error')
+    }
+
     await AsyncStorage.removeItem('sessionId');
     this.backToLaunch()
 
@@ -114,7 +198,12 @@ export default class Game extends Component {
     if (this.state.attemptedLetters.indexOf(letter) > -1) {
       return;
     }
-    let responseData = await this.HgApi.makeAGuess(letter)
+    try {
+      let responseData = await this.HgApi.makeAGuess(letter)
+    } catch (e) {
+      console.log('Network Error', e)
+      alert('Network Error')
+    }
     let array = this.state.attemptedLetters
     array.push(letter)
     this.setState({attemptedLetters: array})
@@ -189,11 +278,12 @@ export default class Game extends Component {
           </TouchableOpacity>
 
         </View>
-        <View style={{flex:2,justifyContent: 'center',alignItems: 'center',}}>
-          {/*this.renderWord()*/}
-          <Text style={styles.word}>{this.state.word}</Text>
-
-        </View>
+          <View style={{flex:2,justifyContent: 'center',alignItems: 'center',}}>
+            <TouchableOpacity
+              onPress={this.getGoldenKey.bind(this)}>
+              <Text style={styles.word}>{this.state.word}</Text>
+            </TouchableOpacity>
+          </View>
         <View style={{flex:3}}>
           {this.renderKeyBoard()}
         </View>
