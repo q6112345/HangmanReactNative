@@ -78,7 +78,6 @@ export default class Game extends Component {
   async getYourResult(){
     let responseData = await this.HgApi.getYourResult()
     this.setState(responseData.data);
-    this.showResult()
   }
   async submit(){
     await this.HgApi.submitYourResult();
@@ -86,40 +85,30 @@ export default class Game extends Component {
     this.backToLaunch()
 
   }
-  showResult() {
+  async showResult() {
+    await this.getYourResult()
     Actions.resultModal({result: this.state, getNextWord: this.getNextWord, submit: this.submit})
   }
 
-  onKeyPress(letter) {
+  async onKeyPress(letter) {
     // https://github.com/Arthraim/HangmanReact
     console.log('onPress', letter)
     if (this.state.attemptedLetters.indexOf(letter) > -1) {
-      console.log('you have guessed', letter)
       return;
     }
-    this.HgApi.makeAGuess(letter, (responseData) => {
-      var array = this.state.attemptedLetters
-      array.push(letter)
-      this.setState({attemptedLetters: array})
-      this.setState(responseData.data)
-      // reach limit of guess times for single word
-      if (this.state.wrongGuessCountOfCurrentWord > 0
-        && this.state.numberOfGuessAllowedForEachWord > 0
-        && (this.state.wrongGuessCountOfCurrentWord == this.state.numberOfGuessAllowedForEachWord /*wrong*/
-        || !this.state.word.includes('*') /*right*/)) {
-        // udpate score
-        this.getYourResult()
-        // get next word
-        //this.getNextWord()
-        // reach limit of words
-        if (this.state.numberOfWordsToGuess > 0
-          && this.state.totalWordCount > 0
-          && this.state.numberOfWordsToGuess == this.state.totalWordCount) {
-          // udpate score
-          this.getYourResult()
-        }
-      }
-    })
+    let responseData = await this.HgApi.makeAGuess(letter)
+    let array = this.state.attemptedLetters
+    array.push(letter)
+    this.setState({attemptedLetters: array})
+    this.setState(responseData.data)
+    if (this.state.wrongGuessCountOfCurrentWord > 0
+      && this.state.numberOfGuessAllowedForEachWord > 0
+      && (this.state.wrongGuessCountOfCurrentWord == this.state.numberOfGuessAllowedForEachWord /*wrong*/
+      || !this.state.word.includes('*') /*right*/)) {
+      this.showResult()
+    }
+
+
   }
 
   renderKeyBoard() {
